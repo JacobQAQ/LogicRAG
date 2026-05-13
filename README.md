@@ -16,11 +16,11 @@ We further construct and release **FinLDP-Bench**, a financial benchmark dataset
 
 ## 1. Motivation
 
-Domain-specific document generation requires not only retrieving relevant facts but also strictly following the writing logic of a specific institution. Financial research report generation is a typical example of this challenge. For example, when the user query is `write a precious metals research report for March 2, 2025`, the system must determine which market indicators should be used, how the report sections should be ordered, and how adjacent paragraphs should maintain coherent analysis.
+Domain-specific document generation requires not only retrieving relevant facts but also strictly following the writing logic of a specific institution. Financial research report generation is a typical example of this challenge. For example, when the user query is **write a precious metals research report for March 2, 2025**, the system must determine which market indicators should be used, how the report sections should be ordered, and how adjacent paragraphs should maintain coherent analysis.
 
 Traditional RAG methods often fail because they mainly retrieve content based on semantic similarity. They may find locally relevant facts, but still miss the institution-specific writing order, omit required data fields, or mix evidence from inconsistent time ranges. This motivates the Logic-Driven Document Generation Problem and the development of LogicRAG.
 
-![LogicRAG motivation and overview](images/overview.png)
+![LogicRAG motivation and overview](images/introduction.png)
 
 Figure 1: Motivation of logic-driven financial document generation.
 
@@ -41,7 +41,7 @@ The framework consists of three stages:
 3. **State-Transition Generation**  
    LogicRAG retrieves state-level data from heterogeneous data sources, generates report segments along the transition order of the sub-automaton, and passes a brief summary between adjacent states to maintain local coherence without accumulating the full generation history.
 
-![LogicRAG framework](images/introduction.png)
+![LogicRAG framework](images/overview.png)
 
 Figure 2: Overall framework of LogicRAG.
 
