@@ -33,7 +33,7 @@ from query_processing import DEFAULT_QUERY, run_query_processing
 from report_generator import ChatClient, LogicRAGReportGenerator
 
 
-DEFAULT_CSV = r"dataset\东吴证券\test\case_2253.csv"
+DEFAULT_CSV = r"dataset\Nonferrous\data\case_2253.csv"
 DEFAULT_OUTPUT_ROOT = "logicrag_outputs"
 DEFAULT_THETA = 0.5
 DEFAULT_TAU = 0.5
