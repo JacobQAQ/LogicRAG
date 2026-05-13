@@ -38,7 +38,7 @@ The framework consists of three stages:
 2. **Query Processing**  
    Given a user query, LogicRAG matches the query intent against the global state index, selects task-relevant states, and extracts a connected sub-automaton that covers the required writing logic.
 
-3. **State-Transition Generation**  
+3. **Generation**  
    LogicRAG retrieves state-level data from heterogeneous data sources, generates report segments along the transition order of the sub-automaton, and passes a brief summary between adjacent states to maintain local coherence without accumulating the full generation history.
 
 ![LogicRAG framework](images/overview.png)
