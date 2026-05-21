@@ -58,7 +58,7 @@ Detailed statistics of the FinLDP-Bench categories are shown in Table 1.
 | Agriculture | 100 | 637.1 | 884 | 64.7 | 83 | 4.00 | 2017.04-2026.01 | Pacific Securities Co., Ltd. |
 | Cotton | 80 | 291.8 | 424 | 51.7 | 88 | 4.80 | 2023.11-2026.01 | CMB Futures Co., Ltd. |
 | Macro | 25 | 354.4 | 422 | 52.8 | 64 | 6.75 | 2025.07-2026.01 | Ping An Securities Co., Ltd. |
-| NonFerrous | 150 | 397.0 | 507 | 36.1 | 55 | 3.53 | 2021.01-2025.12 | Soochow Securities Co., Ltd. |
+| Precious Metals | 150 | 397.0 | 507 | 36.1 | 55 | 3.53 | 2021.01-2025.12 | Soochow Securities Co., Ltd. |
 | ETF | 60 | 204.9 | 287 | 28.3 | 37 | 5.59 | 2024.04-2026.01 | Maigao Securities Co., Ltd. |
 | **Total** | **415** | **404.2** | **884** | **45.9** | **88** | **4.38** | **2017.04-2026.01** | -- |
 
