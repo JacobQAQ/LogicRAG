@@ -104,7 +104,7 @@ Table 3: Generalization experiment results on the RotoWire dataset.
 
 We further analyze the offline construction time of LogicRAG and representative baselines across subsets of FinLDP-Bench. The efficiency gap between LogicRAG and other methods is moderate, and this trade-off is worthwhile because LogicRAG directly produces a complete report with stronger logic consistency and numerical accuracy.
 
-| Methods | Macro | Cotton | NonFerrous | ETF | Agriculture | Average |
+| Methods | Macro | Cotton | Precious Metals | ETF | Agriculture | Average |
 |---|---:|---:|---:|---:|---:|---:|
 | NaiveRAG | 9.76 | 5.06 | 4.73 | 6.36 | 7.58 | 6.70 |
 | HeteRAG | 33.17 | 17.19 | 16.09 | 21.64 | 25.78 | 22.77 |
