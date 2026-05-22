@@ -28,7 +28,6 @@ from document_learner import (
 )
 
 
-DEFAULT_QUERY = "write a nonferrous metals research report for  February 28, 2025 "
 DEFAULT_TAU = 0.5
 
 
@@ -288,7 +287,7 @@ def run_query_processing(args: argparse.Namespace) -> Dict[str, Any]:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="LogicRAG query processing")
-    parser.add_argument("--query", default=DEFAULT_QUERY, help="User query q.")
+    parser.add_argument("--query", required=True, help="User query q.")
     parser.add_argument("--tau", type=float, default=DEFAULT_TAU, help="Similarity threshold.")
     parser.add_argument("--template", default="logicrag_outputs/global_template.json", help="Global template JSON.")
     parser.add_argument("--index", default="logicrag_outputs/state_index.json", help="State embedding index JSON.")

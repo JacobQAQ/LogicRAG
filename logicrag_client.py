@@ -29,11 +29,11 @@ from document_learner import (
     run_from_csv,
 )
 from ifind_data_plugin import run_data_plugin
-from query_processing import DEFAULT_QUERY, run_query_processing
+from query_processing import run_query_processing
 from report_generator import ChatClient, LogicRAGReportGenerator
 
 
-DEFAULT_CSV = r"dataset\Nonferrous\data\case_2253.csv"
+DEFAULT_CSV = r"dataset\Precious_Metals\data\case_2253.csv"
 DEFAULT_OUTPUT_ROOT = "logicrag_outputs"
 DEFAULT_THETA = 0.5
 DEFAULT_TAU = 0.5
@@ -197,11 +197,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-root", default=DEFAULT_OUTPUT_ROOT, help="Pipeline output directory.")
     parser.add_argument("--dictionary", default="domain_dictionary.csv", help="domain_dictionary.csv path.")
 
-    parser.add_argument("--query", default=DEFAULT_QUERY, help="User query.")
+    parser.add_argument("--query", required=True, help="User query.")
     parser.add_argument("--theta", type=float, default=DEFAULT_THETA, help="Document state matching threshold.")
     parser.add_argument("--tau", type=float, default=DEFAULT_TAU, help="Query-state matching threshold.")
     parser.add_argument("--date", default="", help="Optional date override for iFinD retrieval, YYYY-MM-DD.")
-    parser.add_argument("--asset-name", default="", help="Optional explicit asset name for code resolution.")
+    parser.add_argument("--asset-name", default="", help="Optional lookup term used only against domain_dictionary.csv.")
     parser.add_argument("--report-pair-id", default="", help="Optional report pair id.")
 
     parser.add_argument("--deepseek-api-key", default="", help="DeepSeek/OpenAI-compatible chat API key.")

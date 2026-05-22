@@ -4,14 +4,14 @@ This guide explains how to configure the runtime environment and run the full Lo
 
 ## 1. Environment Variables
 
-You can provide API keys and account credentials either as environment variables or as CLI hyperparameters.
+You can provide API keys and account credentials either as environment variables or as CLI hyperparameters. For DeepSeek API, you can apply for an API key at https://platform.deepseek.com/. For `DASHSCOPE_API_KEY`, you can create or view an API key in the Alibaba Cloud Bailian console at https://bailian.console.aliyun.com/. For `IFIND_USERNAME` and `IFIND_PASSWORD`, you can apply for a free trial account at https://quantapi.10jqka.com.cn/.
 
 ### PowerShell Temporary Configuration
 
 These variables are valid only in the current PowerShell session:
 
 ```powershell
-cd "C:\Users\Steve\Desktop\Research\LogicRAG"
+cd "**The file path where you store LogicRAG**"
 
 $env:DEEPSEEK_API_KEY="your_deepseek_api_key"
 
@@ -59,7 +59,7 @@ Requirements:
 Example dataset path used during development:
 
 ```text
-C:\Users\Jacob\Desktop\Research\LogicRAG\dataset\Precious_Metals\data\case_2253.csv
+dataset\Precious_Metals\data\case_2253.csv
 ```
 
 ## 3. One-Command Client
@@ -86,17 +86,32 @@ Main hyperparameters:
 |---|---:|---|
 | `--theta` | `0.5` | Threshold for matching states across the two sample reports in `document_learner.py`. |
 | `--tau` | `0.5` | Threshold for matching query embedding to state embeddings in `query_processing.py`. |
-| `--query` | `write a precious metals research report for  March 2, 2025 ` | User query for the generation task. |
+| `--query` | required | User query for the generation task. This value must be provided explicitly from the CLI. |
 | `--row-a` | `0` | First sample report row index. |
 | `--row-b` | `1` | Second sample report row index. |
 | `--output-root` | `logicrag_outputs` | Output directory for all intermediate and final artifacts. |
 | `--date` | empty | Optional manual override for the iFinD query date. |
 | `--local-embedding-only` | off | Use deterministic local hash embeddings instead of DashScope embeddings. |
 
+### Domain Dictionary for iFinD CODES
+
+`ifind_data_plugin.py` resolves iFinD `CODES` from `domain_dictionary.csv`. The plugin does not use built-in futures aliases, direct-code fallback, or a default precious-metals portfolio.
+
+Because the iFinD API platform does not provide a complete public `CODES` mapping table, the provided `domain_dictionary.csv` contains only the partial mappings needed for the current experiments. If you want to retrieve data for another domain, exchange, contract, or instrument, manually add the corresponding mapping rows to `domain_dictionary.csv` before running data retrieval. You can find CODES for your domain in the iFinD official website https://quantapi.10jqka.com.cn/.
+
+The required format is `CODE,Name`; an optional `Aliases` column can be added for controlled fuzzy matching when the material name and dictionary name differ.
+
+```csv
+CODE,Name,Aliases
+@GC0Y.CMX,纽约金连一,COMEX黄金|COMEX金|纽约金|COMEX gold
+@GC0Y.LME,伦金连续,LME金|LME金|LME黄金|LME金|LME gold
+```
+
 API and account parameters can also be passed directly:
 
 ```powershell
 python logicrag_client.py `
+  --query "write a precious metals research report for February 28, 2025" `
   --deepseek-api-key "your_deepseek_api_key" `
   --dashscope-api-key "your_dashscope_api_key" `
   --ifind-username "your_ifind_username" `
@@ -124,7 +139,7 @@ dimension=1024
 
 ```powershell
 python document_learner.py `
-  --csv "dataset\Precious_Metals\test\case_2253.csv" `
+  --csv "dataset\Precious_Metals\data\case_2253.csv" `
   --row-a 0 `
   --row-b 1 `
   --theta 0.5 `
@@ -145,7 +160,7 @@ logicrag_outputs/run_manifest.json
 
 ```powershell
 python query_processing.py `
-  --query "write a precious metals research report for March 2, 2025" `
+  --query "write a precious metals research report for February 28, 2025" `
   --tau 0.5 `
   --template "logicrag_outputs/global_template.json" `
   --index "logicrag_outputs/state_index.json" `
@@ -163,14 +178,19 @@ logicrag_outputs/query_subtree.json
 Dry run first:
 
 ```powershell
-python ifind_data_plugin.py --dry-run
+python ifind_data_plugin.py `
+  --query "write a precious metals research report for February 28, 2025" `
+  --query-subtree "logicrag_outputs/query_subtree.json" `
+  --dictionary "domain_dictionary.csv" `
+  --output-dir "logicrag_outputs/retrieved_materials" `
+  --dry-run
 ```
 
 Actual retrieval:
 
 ```powershell
 python ifind_data_plugin.py `
-  --query "write a precious metals research report for March 2, 2025" `
+  --query "write a precious metals research report for February 28, 2025" `
   --date "2025-02-28" `
   --query-subtree "logicrag_outputs/query_subtree.json" `
   --dictionary "domain_dictionary.csv" `
@@ -224,8 +244,8 @@ logicrag_outputs/generation_trace.json
 
 ```powershell
 python check_dashscope_embedding.py
-python logicrag_client.py --dry-run-data --dry-run-report --local-embedding-only
-python logicrag_client.py --dry-run-data --dry-run-report
-python logicrag_client.py --dry-run-report --date "2025-02-28"
-python logicrag_client.py --date "2025-02-28"
+python logicrag_client.py --query "write a precious metals research report for February 28, 2025" --dry-run-data --dry-run-report --local-embedding-only
+python logicrag_client.py --query "write a precious metals research report for February 28, 2025" --dry-run-data --dry-run-report
+python logicrag_client.py --query "write a precious metals research report for February 28, 2025" --dry-run-report --date "2025-02-28"
+python logicrag_client.py --query "write a precious metals research report for February 28, 2025" --date "2025-02-28"
 ```

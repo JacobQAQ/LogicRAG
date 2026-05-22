@@ -16,7 +16,7 @@ We further construct and release **FinLDP-Bench**, a financial benchmark dataset
 
 ## 1. Motivation
 
-Domain-specific document generation requires not only retrieving relevant facts but also strictly following the writing logic of a specific institution. Financial research report generation is a typical example of this challenge. For example, when the user query is **write a precious metals research report for March 2, 2025**, the system must determine which market indicators should be used, how the report sections should be ordered, and how adjacent paragraphs should maintain coherent analysis.
+Domain-specific document generation requires not only retrieving relevant facts but also strictly following the writing logic of a specific institution. Financial research report generation is a typical example of this challenge. For example, when the user query is **write a precious metals research report for February 28, 2025**, the system must determine which market indicators should be used, how the report sections should be ordered, and how adjacent paragraphs should maintain coherent analysis.
 
 Traditional RAG methods often fail because they mainly retrieve content based on semantic similarity. They may find locally relevant facts, but still miss the institution-specific writing order, omit required data fields, or mix evidence from inconsistent time ranges. This motivates the Logic-Driven Document Generation Problem and the development of LogicRAG.
 

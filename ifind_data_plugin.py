@@ -6,8 +6,7 @@ state-bound market data files:
 
 1. Parse the reference date from the user query.
 2. Read required_materials from query_subtree.json.
-3. Resolve CODES from domain_dictionary.csv first; if not found, fall back to
-   iFinD's THS_toTHSCODE for stock names.
+3. Resolve CODES from domain_dictionary.csv.
 4. Query iFinD historical quotations through THS_HQ.
 5. Save both a flat CSV and node/material-level JSON bindings for generation.
 
@@ -29,19 +28,9 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import pandas as pd
 
 
-DEFAULT_QUERY = "write a nonferrous metals research report for February 28, 2025 "
 DEFAULT_TEMPLATE = "logicrag_outputs/query_subtree.json"
 DEFAULT_OUTPUT_DIR = "logicrag_outputs/retrieved_materials"
 DEFAULT_DICTIONARY = "domain_dictionary.csv"
-
-DEFAULT_NONFERROUS_CODES = [
-    "ALI0Y.CMX",
-    "@GC0Y.CMX",
-    "@HG0Y.CMX",
-    "AU00.SHF",
-    "CU00.SHF",
-    "AL00.SHF",
-]
 
 DEFAULT_FUTURES_INDICATORS = [
     "preSettlement",
@@ -62,6 +51,10 @@ DEFAULT_STOCK_INDICATORS = [
     "change",
     "changeRatio",
     "volume",
+]
+
+CONTRACT_SUFFIXES = [
+    "连续",
 ]
 
 MONTH_TO_NUMBER = {
@@ -101,51 +94,6 @@ INDICATOR_KEYWORDS = {
     "volume": ["volume", "trading volume", "成交量"],
     "openInterest": ["open interest", "持仓", "持仓量"],
 }
-
-FUTURES_NAME_ALIASES = {
-    "comex gold": "@GC0Y.CMX",
-    "new york gold": "@GC0Y.CMX",
-    "ny gold": "@GC0Y.CMX",
-    "纽约金": "@GC0Y.CMX",
-    "comex copper": "@HG0Y.CMX",
-    "new york copper": "@HG0Y.CMX",
-    "ny copper": "@HG0Y.CMX",
-    "纽约铜": "@HG0Y.CMX",
-    "comex aluminum": "ALI0Y.CMX",
-    "comex aluminium": "ALI0Y.CMX",
-    "new york aluminum": "ALI0Y.CMX",
-    "new york aluminium": "ALI0Y.CMX",
-    "纽约铝": "ALI0Y.CMX",
-    "shfe gold": "AU00.SHF",
-    "shanghai gold": "AU00.SHF",
-    "沪金": "AU00.SHF",
-    "shfe copper": "CU00.SHF",
-    "shanghai copper": "CU00.SHF",
-    "沪铜": "CU00.SHF",
-    "shfe aluminum": "AL00.SHF",
-    "shfe aluminium": "AL00.SHF",
-    "shanghai aluminum": "AL00.SHF",
-    "shanghai aluminium": "AL00.SHF",
-    "沪铝": "AL00.SHF",
-    "lme copper": "00CAD.LME",
-    "伦铜": "00CAD.LME",
-    "lme aluminum": "00AHD.LME",
-    "lme aluminium": "00AHD.LME",
-    "伦铝": "00AHD.LME",
-}
-
-NONFERROUS_KEYWORDS = [
-    "nonferrous",
-    "non-ferrous",
-    "non ferrous",
-    "有色",
-    "base metal",
-    "industrial metal",
-    "metals research report",
-]
-
-DIRECT_CODE_RE = re.compile(r"@?[A-Z]{1,5}[A-Z0-9]*\.[A-Z]{2,5}")
-
 
 def load_json(path: str | Path) -> Dict[str, Any]:
     with Path(path).open("r", encoding="utf-8") as file:
@@ -187,6 +135,22 @@ def as_list(value: Any) -> List[Any]:
     if isinstance(value, str):
         return [value] if value.strip() else []
     return [value]
+
+
+def split_aliases(value: Any) -> List[str]:
+    text = str(value or "").strip()
+    if not text or text.lower() == "nan":
+        return []
+    return [item.strip() for item in re.split(r"[|;,，、]", text) if item.strip()]
+
+
+def dictionary_terms(name: str, aliases: Any = "") -> List[str]:
+    terms = [name, *split_aliases(aliases)]
+    for term in list(terms):
+        for suffix in CONTRACT_SUFFIXES:
+            if term.endswith(suffix):
+                terms.append(term[: -len(suffix)])
+    return unique_keep_order(normalize_text(term) for term in terms if len(normalize_text(term)) >= 2)
 
 
 def parse_query_date(query: str) -> str:
@@ -244,6 +208,13 @@ class FuturesDomainDictionary:
             raise ValueError(f"domain_dictionary.csv must contain columns {required_cols}.")
         self.df["CODE"] = self.df["CODE"].astype(str).str.strip()
         self.df["Name"] = self.df["Name"].astype(str).str.strip()
+        if "Aliases" not in self.df.columns:
+            self.df["Aliases"] = ""
+        self.df["Aliases"] = self.df["Aliases"].fillna("").astype(str)
+        self.df["_match_terms"] = self.df.apply(
+            lambda row: dictionary_terms(str(row["Name"]), row.get("Aliases", "")),
+            axis=1,
+        )
         self.df["_norm_name"] = self.df["Name"].apply(normalize_text)
 
     def resolve(self, query_name: str) -> str:
@@ -267,10 +238,16 @@ class FuturesDomainDictionary:
 
     def scan_codes(self, text: str) -> List[str]:
         norm_text = normalize_text(text)
-        matched = self.df[self.df["_norm_name"].apply(lambda name: bool(name and name in norm_text))]
+        matched = self.df[
+            self.df["_match_terms"].apply(lambda terms: any(term and term in norm_text for term in terms))
+        ]
         if matched.empty:
             return []
-        matched = matched.assign(_len=matched["_norm_name"].str.len()).sort_values("_len", ascending=False)
+        matched = matched.assign(
+            _len=matched["_match_terms"].apply(
+                lambda terms: max((len(term) for term in terms if term in norm_text), default=0)
+            )
+        ).sort_values("_len", ascending=False)
         return unique_keep_order(matched["CODE"].tolist())
 
     def _rank_candidates(self, candidates: pd.DataFrame) -> pd.DataFrame:
@@ -314,25 +291,10 @@ class RequiredMaterialResolver:
         notes: List[str] = []
         search_text = f"{asset_name or ''}\n{text}"
 
-        direct_codes = DIRECT_CODE_RE.findall(search_text.upper())
-        if direct_codes:
-            notes.append("resolved by direct code pattern")
-            return unique_keep_order(direct_codes), notes
-
         dictionary_codes = self.dictionary.scan_codes(search_text)
         if dictionary_codes:
             notes.append("resolved by domain_dictionary.csv")
             return dictionary_codes, notes
-
-        norm = normalize_text(search_text)
-        alias_codes = [code for alias, code in FUTURES_NAME_ALIASES.items() if normalize_text(alias) in norm]
-        if alias_codes:
-            notes.append("resolved by built-in futures aliases")
-            return unique_keep_order(alias_codes), notes
-
-        if any(keyword in norm for keyword in NONFERROUS_KEYWORDS):
-            notes.append("resolved by nonferrous default portfolio")
-            return list(DEFAULT_NONFERROUS_CODES), notes
 
         return [], notes
 
@@ -381,7 +343,7 @@ class RequiredMaterialResolver:
                         codes=codes,
                         indicators=indicators,
                         date=date,
-                        asset_type="future" if codes else "stock",
+                        asset_type="future" if codes else "unresolved",
                         resolver_notes=notes,
                     )
                 )
@@ -420,24 +382,6 @@ class IFINDDataClient:
         api = self._ifind()
         api.THS_iFinDLogout()
         self._logged_in = False
-
-    def get_thscode(self, name: str) -> str:
-        """Resolve stock/security names through iFinD THS_toTHSCODE."""
-        api = self._ifind()
-        result = api.THS_toTHSCODE(name, "", "format:dataframe")
-        self._raise_if_error(result, f"THS_toTHSCODE({name})")
-        df = self._to_dataframe(result)
-        if df.empty:
-            raise KeyError(f"iFinD cannot resolve THSCODE for name: {name}")
-
-        for col in ["thscode", "THSCODE", "code", "证券代码", "同花顺代码"]:
-            if col in df.columns:
-                return str(df.iloc[0][col])
-
-        first_value = str(df.iloc[0, 0])
-        if "." not in first_value:
-            raise KeyError(f"Cannot infer THSCODE from THS_toTHSCODE result columns: {df.columns.tolist()}")
-        return first_value
 
     def cmd_history_quotation(
         self,
@@ -637,7 +581,9 @@ def save_node_material_files(
 
 def run_data_plugin(args: argparse.Namespace) -> Dict[str, Any]:
     query_subtree = load_json(args.query_subtree)
-    query = args.query or query_subtree.get("query_processing_metadata", {}).get("query") or DEFAULT_QUERY
+    query = str(args.query or "").strip()
+    if not query:
+        raise ValueError("A user query is required. Pass --query explicitly.")
     query_date = args.date or parse_query_date(query)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -698,12 +644,12 @@ def run_data_plugin(args: argparse.Namespace) -> Dict[str, Any]:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="LogicRAG iFinD data plugin")
-    parser.add_argument("--query", default=DEFAULT_QUERY, help="User query used to infer the reference date.")
+    parser.add_argument("--query", required=True, help="User query used to infer the reference date.")
     parser.add_argument("--query-subtree", default=DEFAULT_TEMPLATE, help="query_subtree.json from query_processing.py.")
     parser.add_argument("--dictionary", default=DEFAULT_DICTIONARY, help="domain_dictionary.csv path.")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, help="Output directory for data bindings.")
     parser.add_argument("--date", default="", help="Override query date as YYYY-MM-DD.")
-    parser.add_argument("--asset-name", default="", help="Optional explicit asset name for stock/futures resolution.")
+    parser.add_argument("--asset-name", default="", help="Optional lookup term used only against domain_dictionary.csv.")
     parser.add_argument("--username", default=os.environ.get("IFIND_USERNAME", ""), help="iFinD username.")
     parser.add_argument("--password", default=os.environ.get("IFIND_PASSWORD", ""), help="iFinD password.")
     parser.add_argument("--dry-run", action="store_true", help="Only build query specs; do not call iFinD.")
